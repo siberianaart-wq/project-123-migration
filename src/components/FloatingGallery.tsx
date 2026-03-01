@@ -115,22 +115,36 @@ function OrbitGallery({ onOpen }: { onOpen: (i: number) => void }) {
 
 function MobileCarousel({ onOpen }: { onOpen: (i: number) => void }) {
   const [active, setActive] = useState(0);
-  const touchStart = useRef<number | null>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const isHorizontalSwipe = useRef(false);
   const count = galleryImages.length;
 
   const prev = () => setActive((a) => (a - 1 + count) % count);
   const next = () => setActive((a) => (a + 1) % count);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    touchStart.current = e.touches[0].clientX;
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    isHorizontalSwipe.current = false;
   };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStart.current.x);
+    const dy = Math.abs(e.touches[0].clientY - touchStart.current.y);
+    if (dx > 10 && dx > dy * 1.2) {
+      isHorizontalSwipe.current = true;
+      e.preventDefault();
+    }
+  };
+
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStart.current === null) return;
-    const diff = touchStart.current - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 40) {
+    if (!touchStart.current) return;
+    const diff = touchStart.current.x - e.changedTouches[0].clientX;
+    if (isHorizontalSwipe.current && Math.abs(diff) > 40) {
       if (diff > 0) next(); else prev();
     }
     touchStart.current = null;
+    isHorizontalSwipe.current = false;
   };
 
   const getOffset = (index: number) => {
@@ -143,8 +157,9 @@ function MobileCarousel({ onOpen }: { onOpen: (i: number) => void }) {
   return (
     <div
       className="relative overflow-hidden"
-      style={{ padding: '3rem 0 2rem', height: '85vw', perspective: '800px' }}
+      style={{ padding: '3rem 0 2rem', height: '85vw', perspective: '800px', touchAction: 'pan-y' }}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       {galleryImages.map((src, i) => {
